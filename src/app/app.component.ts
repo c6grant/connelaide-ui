@@ -6,7 +6,7 @@ import { Component } from '@angular/core';
   imports: [],
   template: `
     <div class="container">
-      Fun things coming..
+      Fun things are here.
     </div>
   `,
   styles: [`
