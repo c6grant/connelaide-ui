@@ -1,10 +1,11 @@
 import { Component, OnInit } from "@angular/core";
+import { NgIf } from "@angular/common";
 
 
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [],
+  imports: [NgIf],
   template: `
     <div class="container">
       <div *ngIf="message; else loading">
