@@ -1,4 +1,5 @@
-import { Component } from "@angular/core";
+import { Component, OnInit } from "@angular/core";
+
 
 @Component({
   selector: "app-root",
@@ -6,7 +7,12 @@ import { Component } from "@angular/core";
   imports: [],
   template: `
     <div class="container">
-      Welcome hehe. 
+      <div *ngIf="message; else loading">
+        API says: {{ message }}
+      </div>
+      <ng-template #loading>
+        Loading message from API...
+      </ng-template>
     </div>
   `,
   styles: [
@@ -22,4 +28,17 @@ import { Component } from "@angular/core";
     `,
   ],
 })
-export class AppComponent {}
+export class AppComponent implements OnInit {
+  message: string | null = null;
+
+  ngOnInit() {
+    fetch('/api/v1/example')
+      .then(res => res.json())
+      .then(data => {
+        this.message = data.message;
+      })
+      .catch(() => {
+        this.message = 'Failed to load message from API.';
+      });
+  }
+}
