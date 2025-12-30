@@ -6,8 +6,7 @@ import { Component } from "@angular/core";
   imports: [],
   template: `
     <div class="container">
-      Hello Studaliaders! We are thinking of going to dinner after my Stout call
-      that starts at 5:15 and likely goes to 5:30ish. Does that work for you??
+      Welcome hehe. 
     </div>
   `,
   styles: [
