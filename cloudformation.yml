@@ -1,173 +1,173 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Fast minimal ECS setup for Connelaide UI using default VPC'
+AWSTemplateFormatVersion: '2010-09-09' # Specifies the CloudFormation template version
+Description: 'Fast minimal ECS setup for Connelaide UI using default VPC' # Description of the stack
 
-Parameters:
-  ImageUri:
-    Type: String
-    Description: Docker image URI (e.g., your-account-id.dkr.ecr.us-east-1.amazonaws.com/connelaide-ui:latest)
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-    Description: Your default VPC ID
-  SubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
-    Description: Two subnet IDs from your default VPC (comma-separated)
-  CertificateArn:
-    Type: String
-    Description: ARN of the ACM certificate for HTTPS (e.g., arn:aws:acm:region:account:certificate/xxx)
-    Default: ""
+Parameters: # Input values to customize the stack
+  ImageUri: # Docker image URI for ECS task
+    Type: String # Parameter type is string
+    Description: Docker image URI (e.g., your-account-id.dkr.ecr.us-east-1.amazonaws.com/connelaide-ui:latest) # Description for user
+  VpcId: # VPC ID for resources
+    Type: AWS::EC2::VPC::Id # Parameter type is VPC ID
+    Description: Your default VPC ID # Description for user
+  SubnetIds: # List of subnet IDs for resources
+    Type: List<AWS::EC2::Subnet::Id> # Parameter type is list of subnet IDs
+    Description: Two subnet IDs from your default VPC (comma-separated) # Description for user
+  CertificateArn: # ACM certificate ARN for HTTPS
+    Type: String # Parameter type is string
+    Description: ARN of the ACM certificate for HTTPS (e.g., arn:aws:acm:region:account:certificate/xxx) # Description for user
+    Default: "" # Default value is empty
 
-Resources:
+Resources: # AWS resources to create
   # ALB Security Group
-  ALBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow HTTP and HTTPS traffic to ALB
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
+  ALBSecurityGroup: # Security group for the Application Load Balancer
+    Type: AWS::EC2::SecurityGroup # Resource type is EC2 Security Group
+    Properties: # Properties for the security group
+      GroupDescription: Allow HTTP and HTTPS traffic to ALB # Description of the security group
+      VpcId: !Ref VpcId # Attach security group to specified VPC
+      SecurityGroupIngress: # Inbound rules for security group
+        - IpProtocol: tcp # Allow TCP traffic
+          FromPort: 80 # Allow traffic on port 80 (HTTP)
+          ToPort: 80 # End port for rule
+          CidrIp: 0.0.0.0/0 # Allow from any IP
+        - IpProtocol: tcp # Allow TCP traffic
+          FromPort: 443 # Allow traffic on port 443 (HTTPS)
+          ToPort: 443 # End port for rule
+          CidrIp: 0.0.0.0/0 # Allow from any IP
 
   # ECS Security Group
-  ECSSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow traffic from ALB
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          SourceSecurityGroupId: !Ref ALBSecurityGroup
+  ECSSecurityGroup: # Security group for ECS tasks
+    Type: AWS::EC2::SecurityGroup # Resource type is EC2 Security Group
+    Properties: # Properties for the security group
+      GroupDescription: Allow traffic from ALB # Description of the security group
+      VpcId: !Ref VpcId # Attach security group to specified VPC
+      SecurityGroupIngress: # Inbound rules for security group
+        - IpProtocol: tcp # Allow TCP traffic
+          FromPort: 80 # Allow traffic on port 80 (HTTP)
+          ToPort: 80 # End port for rule
+          SourceSecurityGroupId: !Ref ALBSecurityGroup # Only allow traffic from ALB security group
 
   # ECS Cluster
-  ECSCluster:
-    Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: connelaide-cluster
+  ECSCluster: # ECS cluster for running tasks
+    Type: AWS::ECS::Cluster # Resource type is ECS Cluster
+    Properties: # Properties for ECS cluster
+      ClusterName: connelaide-cluster # Name of the ECS cluster
 
   # Application Load Balancer
-  LoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: connelaide-alb
-      Subnets: !Ref SubnetIds
-      SecurityGroups:
-        - !Ref ALBSecurityGroup
-      Scheme: internet-facing
-      Type: application
+  LoadBalancer: # Application Load Balancer resource
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer # Resource type is ALB
+    Properties: # Properties for ALB
+      Name: connelaide-alb # Name of the ALB
+      Subnets: !Ref SubnetIds # Attach ALB to specified subnets
+      SecurityGroups: # Security groups for ALB
+        - !Ref ALBSecurityGroup # Reference ALB security group
+      Scheme: internet-facing # Make ALB public
+      Type: application # Specify ALB type
 
   # Target Group
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: connelaide-tg
-      Port: 80
-      Protocol: HTTP
-      VpcId: !Ref VpcId
-      TargetType: ip
-      HealthCheckPath: /
-      HealthCheckIntervalSeconds: 30
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 3
+  TargetGroup: # Target group for ALB
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup # Resource type is Target Group
+    Properties: # Properties for target group
+      Name: connelaide-tg # Name of the target group
+      Port: 80 # Target group listens on port 80
+      Protocol: HTTP # Use HTTP protocol
+      VpcId: !Ref VpcId # Attach target group to specified VPC
+      TargetType: ip # Targets are IP addresses
+      HealthCheckPath: / # Health check path for targets
+      HealthCheckIntervalSeconds: 30 # Health check interval
+      HealthCheckTimeoutSeconds: 5 # Health check timeout
+      HealthyThresholdCount: 2 # Number of successes for healthy
+      UnhealthyThresholdCount: 3 # Number of failures for unhealthy
 
   # HTTP Listener - Redirect to HTTPS
-  ALBListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
-      Protocol: HTTP
-      DefaultActions:
-        - Type: redirect
-          RedirectConfig:
-            Protocol: HTTPS
-            Port: '443'
-            StatusCode: HTTP_301
+  ALBListener: # Listener for HTTP traffic
+    Type: AWS::ElasticLoadBalancingV2::Listener # Resource type is Listener
+    Properties: # Properties for listener
+      LoadBalancerArn: !Ref LoadBalancer # Attach listener to ALB
+      Port: 80 # Listen on port 80
+      Protocol: HTTP # Use HTTP protocol
+      DefaultActions: # Default action for listener
+        - Type: redirect # Redirect HTTP to HTTPS
+          RedirectConfig: # Redirect configuration
+            Protocol: HTTPS # Redirect to HTTPS
+            Port: '443' # Redirect to port 443
+            StatusCode: HTTP_301 # Use HTTP 301 redirect
 
   # HTTPS Listener
-  HTTPSListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: 443
-      Protocol: HTTPS
-      Certificates:
-        - CertificateArn: !Ref CertificateArn
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+  HTTPSListener: # Listener for HTTPS traffic
+    Type: AWS::ElasticLoadBalancingV2::Listener # Resource type is Listener
+    Properties: # Properties for listener
+      LoadBalancerArn: !Ref LoadBalancer # Attach listener to ALB
+      Port: 443 # Listen on port 443
+      Protocol: HTTPS # Use HTTPS protocol
+      Certificates: # SSL certificates for HTTPS
+        - CertificateArn: !Ref CertificateArn # Reference ACM certificate
+      DefaultActions: # Default action for listener
+        - Type: forward # Forward traffic to target group
+          TargetGroupArn: !Ref TargetGroup # Reference target group
 
   # Task Execution Role
-  TaskExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  TaskExecutionRole: # IAM role for ECS task execution
+    Type: AWS::IAM::Role # Resource type is IAM Role
+    Properties: # Properties for IAM role
+      AssumeRolePolicyDocument: # Trust policy for role
+        Statement: # Policy statements
+          - Effect: Allow # Allow assumption of role
+            Principal: # Who can assume the role
+              Service: ecs-tasks.amazonaws.com # ECS tasks service principal
+            Action: sts:AssumeRole # Action to assume role
+      ManagedPolicyArns: # Attach managed policies
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy # ECS task execution policy
 
   # Task Definition
-  TaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: connelaide-task
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      Cpu: '256'
-      Memory: '512'
-      ExecutionRoleArn: !Ref TaskExecutionRole
-      ContainerDefinitions:
-        - Name: connelaide-container
-          Image: !Ref ImageUri
-          PortMappings:
-            - ContainerPort: 80
-              Protocol: tcp
+  TaskDefinition: # ECS task definition
+    Type: AWS::ECS::TaskDefinition # Resource type is Task Definition
+    Properties: # Properties for task definition
+      Family: connelaide-task # Task family name
+      NetworkMode: awsvpc # Use VPC networking mode
+      RequiresCompatibilities: # Required launch types
+        - FARGATE # Use Fargate launch type
+      Cpu: '256' # CPU units for task
+      Memory: '512' # Memory for task
+      ExecutionRoleArn: !Ref TaskExecutionRole # Reference execution role
+      ContainerDefinitions: # Container settings for task
+        - Name: connelaide-container # Name of the container
+          Image: !Ref ImageUri # Docker image for container
+          PortMappings: # Port mappings for container
+            - ContainerPort: 80 # Expose port 80 in container
+              Protocol: tcp # Use TCP protocol
 
   # ECS Service
-  ECSService:
-    Type: AWS::ECS::Service
-    DependsOn:
-      - ALBListener
-      - HTTPSListener
-    Properties:
-      ServiceName: connelaide-service
-      Cluster: !Ref ECSCluster
-      TaskDefinition: !Ref TaskDefinition
-      DesiredCount: 1
-      LaunchType: FARGATE
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
-          Subnets: !Ref SubnetIds
-          SecurityGroups:
-            - !Ref ECSSecurityGroup
-      LoadBalancers:
-        - ContainerName: connelaide-container
-          ContainerPort: 80
-          TargetGroupArn: !Ref TargetGroup
+  ECSService: # ECS service to run tasks
+    Type: AWS::ECS::Service # Resource type is ECS Service
+    DependsOn: # Ensure listeners are created first
+      - ALBListener # Depends on HTTP listener
+      - HTTPSListener # Depends on HTTPS listener
+    Properties: # Properties for ECS service
+      ServiceName: connelaide-service # Name of the ECS service
+      Cluster: !Ref ECSCluster # Reference ECS cluster
+      TaskDefinition: !Ref TaskDefinition # Reference task definition
+      DesiredCount: 1 # Number of tasks to run
+      LaunchType: FARGATE # Use Fargate launch type
+      NetworkConfiguration: # Network settings for service
+        AwsvpcConfiguration: # VPC configuration for service
+          AssignPublicIp: ENABLED # Assign public IP to tasks
+          Subnets: !Ref SubnetIds # Attach tasks to specified subnets
+          SecurityGroups: # Security groups for tasks
+            - !Ref ECSSecurityGroup # Reference ECS security group
+      LoadBalancers: # Attach service to ALB target group
+        - ContainerName: connelaide-container # Name of container to route traffic
+          ContainerPort: 80 # Port to route traffic
+          TargetGroupArn: !Ref TargetGroup # Reference target group
 
-Outputs:
-  ClusterName:
-    Description: ECS Cluster Name
-    Value: !Ref ECSCluster
-  ServiceName:
-    Description: ECS Service Name
-    Value: !GetAtt ECSService.Name
-  LoadBalancerDNS:
-    Description: ALB DNS Name - Use this in Route 53
-    Value: !GetAtt LoadBalancer.DNSName
-  LoadBalancerArn:
-    Description: ALB ARN
-    Value: !Ref LoadBalancer
+Outputs: # Values returned after stack creation
+  ClusterName: # Output ECS cluster name
+    Description: ECS Cluster Name # Description of output
+    Value: !Ref ECSCluster # Reference ECS cluster
+  ServiceName: # Output ECS service name
+    Description: ECS Service Name # Description of output
+    Value: !GetAtt ECSService.Name # Get ECS service name attribute
+  LoadBalancerDNS: # Output ALB DNS name
+    Description: ALB DNS Name - Use this in Route 53 # Description of output
+    Value: !GetAtt LoadBalancer.DNSName # Get ALB DNS name attribute
+  LoadBalancerArn: # Output ALB ARN
+    Description: ALB ARN # Description of output
+    Value: !Ref LoadBalancer # Reference ALB
