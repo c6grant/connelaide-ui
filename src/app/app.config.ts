@@ -18,7 +18,14 @@ export const appConfig: ApplicationConfig = {
       },
       httpInterceptor: {
         allowedList: [
-          '/api/*'
+          {
+            uri: '/api/v1/protected*',
+            allowAnonymous: false
+          },
+          {
+            uri: '/api/v1/user/*',
+            allowAnonymous: false
+          }
         ]
       }
     })
