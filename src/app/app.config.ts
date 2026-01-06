@@ -19,23 +19,7 @@ export const appConfig: ApplicationConfig = {
       httpInterceptor: {
         allowedList: [
           {
-            uri: 'https://connelaide.com/api/v1/protected*',
-            tokenOptions: {
-              authorizationParams: {
-                audience: 'https://api.connelaide.com',  // Replace with your API audience
-              }
-            }
-          },
-          {
-            uri: 'https://connelaide.com/api/v1/user/*',
-            tokenOptions: {
-              authorizationParams: {
-                audience: 'https://api.connelaide.com',  // Replace with your API audience
-              }
-            }
-          },
-          {
-            uri: 'http://localhost:4200/api/v1/protected*',
+            uri: 'https://connelaide.com/api/*',
             tokenOptions: {
               authorizationParams: {
                 audience: 'https://api.connelaide.com',
@@ -43,7 +27,7 @@ export const appConfig: ApplicationConfig = {
             }
           },
           {
-            uri: 'http://localhost:4200/api/v1/user/*',
+            uri: 'http://localhost:4200/api/*',
             tokenOptions: {
               authorizationParams: {
                 audience: 'https://api.connelaide.com',
