@@ -146,7 +146,13 @@ Resources: # AWS resources to create
       Cluster: !Ref ECSCluster # Reference ECS cluster
       TaskDefinition: !Ref TaskDefinition # Reference task definition
       DesiredCount: 1 # Number of tasks to run
-      LaunchType: FARGATE # Use Fargate launch type
+      CapacityProviderStrategy: # Use Fargate Spot for cost savings
+        - CapacityProvider: FARGATE_SPOT # Primary: Fargate Spot (70% cheaper)
+          Weight: 1 # Weight for spot capacity
+          Base: 0 # Base number of tasks
+        - CapacityProvider: FARGATE # Fallback: Regular Fargate
+          Weight: 0 # Weight for on-demand capacity
+          Base: 0 # Base number of tasks
       NetworkConfiguration: # Network settings for service
         AwsvpcConfiguration: # VPC configuration for service
           AssignPublicIp: ENABLED # Assign public IP to tasks

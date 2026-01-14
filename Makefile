@@ -90,10 +90,6 @@ update: push
 	@echo "Update initiated. Service will redeploy with new image."
 update-stack:
 	@echo "Updating CloudFormation stack..."
-	@if [ -z "$(CERTIFICATE_ARN)" ]; then \
-		echo "ERROR: CERTIFICATE_ARN is required. Set it with: make update-stack CERTIFICATE_ARN=arn:aws:acm:..."; \
-		exit 1; \
-	fi; \
 	aws cloudformation update-stack \
 		--stack-name $(STACK_NAME) \
 		--template-body file://cloudformation.yml \
@@ -101,7 +97,7 @@ update-stack:
 			ParameterKey=ImageUri,UsePreviousValue=true \
 			ParameterKey=VpcId,UsePreviousValue=true \
 			ParameterKey=SubnetIds,UsePreviousValue=true \
-			ParameterKey=CertificateArn,ParameterValue=$(CERTIFICATE_ARN) \
+			ParameterKey=CertificateArn,UsePreviousValue=true \
 		--capabilities CAPABILITY_IAM \
 		--region $(AWS_REGION); \
 	echo "Waiting for stack update..."; \
