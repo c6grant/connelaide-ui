@@ -25,6 +25,10 @@ export const appConfig: ApplicationConfig = {
           {
             uri: '/api/v1/user/*',
             allowAnonymous: false
+          },
+          {
+            uri: '/api/v1/transactions/*',
+            allowAnonymous: false
           }
         ]
       }
