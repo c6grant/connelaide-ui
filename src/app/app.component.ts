@@ -16,6 +16,7 @@ import { AuthService } from './auth.service';
           <ng-container *ngIf="auth.isAuthenticated$ | async; else loggedOut">
             <button (click)="callProtectedEndpoint()">Call Protected API</button>
             <button (click)="getUserProfile()">Get Profile</button>
+            <button (click)="getFirstTransaction()">Get First Transaction</button>
             <button (click)="logout()">Log Out</button>
           </ng-container>
           <ng-template #loggedOut>
@@ -58,6 +59,13 @@ import { AuthService } from './auth.service';
           <h2>User Profile Data</h2>
           <div *ngIf="profileData" class="response">
             <pre>{{ profileData | json }}</pre>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>First Transaction</h2>
+          <div *ngIf="transactionData" class="response">
+            <pre>{{ transactionData | json }}</pre>
           </div>
         </div>
 
@@ -147,6 +155,7 @@ export class AppComponent implements OnInit {
   publicMessage: string | null = null;
   protectedData: any = null;
   profileData: any = null;
+  transactionData: any = null;
   error: string | null = null;
 
   constructor(
@@ -201,6 +210,19 @@ export class AppComponent implements OnInit {
       },
       error: (err) => {
         this.error = 'Failed to load profile data: ' + err.message;
+      }
+    });
+  }
+
+  getFirstTransaction() {
+    this.error = null;
+    this.transactionData = null;
+    this.authService.getFirstTransaction().subscribe({
+      next: (data) => {
+        this.transactionData = data;
+      },
+      error: (err) => {
+        this.error = 'Failed to load transaction data: ' + err.message;
       }
     });
   }

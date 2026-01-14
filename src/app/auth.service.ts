@@ -24,4 +24,9 @@ export class AuthService {
   getUserProfile(): Observable<any> {
     return this.http.get(`${this.apiUrl}/user/profile`);
   }
+
+  // Get first transaction
+  getFirstTransaction(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/transactions/first`);
+  }
 }
