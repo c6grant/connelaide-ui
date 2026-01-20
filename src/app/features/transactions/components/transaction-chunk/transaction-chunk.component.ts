@@ -1,5 +1,5 @@
-import { Component, Input, Output, EventEmitter, ViewChild, AfterViewInit } from '@angular/core';
-import { Panel, PanelModule } from 'primeng/panel';
+import { Component, Input, Output, EventEmitter, ElementRef, AfterViewInit } from '@angular/core';
+import { PanelModule } from 'primeng/panel';
 import { Transaction, TransactionChunk } from '../../../../shared/models/transaction.model';
 import { TransactionTableComponent } from '../transaction-table/transaction-table.component';
 import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pipe';
@@ -11,7 +11,6 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
   imports: [PanelModule, TransactionTableComponent, CurrencyFormatPipe, DateRangePipe],
   template: `
     <p-panel
-      #panel
       [header]="chunk.startDate | dateRange: chunk.endDate"
       [toggleable]="true"
       [collapsed]="!chunk.isExpanded"
@@ -74,16 +73,17 @@ export class TransactionChunkComponent implements AfterViewInit {
   @Output() chunkToggle = new EventEmitter<boolean>();
   @Output() transactionUpdate = new EventEmitter<Transaction>();
 
-  @ViewChild('panel') panel!: Panel;
+  constructor(private elementRef: ElementRef) {}
 
   ngAfterViewInit() {
     // Make entire header clickable to toggle panel
-    const headerEl = this.panel.el.nativeElement.querySelector('.p-panel-header');
+    const headerEl = this.elementRef.nativeElement.querySelector('.p-panel-header');
     if (headerEl) {
-      headerEl.addEventListener('click', (e: Event) => {
+      headerEl.addEventListener('click', (e: MouseEvent) => {
         // Don't toggle if clicking on the toggler button itself (it already handles that)
         if (!(e.target as HTMLElement).closest('.p-panel-toggler')) {
-          this.panel.toggle(e);
+          this.chunk.isExpanded = !this.chunk.isExpanded;
+          this.chunkToggle.emit(this.chunk.isExpanded);
         }
       });
     }
