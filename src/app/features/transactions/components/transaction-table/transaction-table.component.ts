@@ -25,8 +25,8 @@ import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pip
   template: `
     <p-table
       [value]="transactions"
-      [paginator]="transactions.length > 10"
-      [rows]="10"
+      [paginator]="transactions.length > 40"
+      [rows]="40"
       [rowHover]="true"
       dataKey="id"
       editMode="row"
