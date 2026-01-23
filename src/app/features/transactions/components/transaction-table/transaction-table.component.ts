@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
-import { CalendarModule } from 'primeng/calendar';
-import { ButtonModule } from 'primeng/button';
+import { DropdownModule } from 'primeng/dropdown';
 import { Transaction } from '../../../../shared/models/transaction.model';
 import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pipe';
 
@@ -18,8 +17,7 @@ import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pip
     TableModule,
     InputTextModule,
     InputNumberModule,
-    CalendarModule,
-    ButtonModule,
+    DropdownModule,
     CurrencyFormatPipe
   ],
   template: `
@@ -29,66 +27,54 @@ import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pip
       [rows]="40"
       [rowHover]="true"
       dataKey="id"
-      editMode="row"
+      editMode="cell"
+      (onEditComplete)="onCellEditComplete($event)"
       styleClass="p-datatable-sm">
       <ng-template pTemplate="header">
         <tr>
           <th>Date</th>
+          <th>Account</th>
           <th>Description</th>
           <th>Category</th>
+          <th>Connelaide Category</th>
           <th style="text-align: right">Amount</th>
-          <th style="width: 100px">Actions</th>
+          <th>Pending</th>
+          <th>Note</th>
+          <th>Impacts Balance</th>
         </tr>
       </ng-template>
       <ng-template pTemplate="body" let-transaction let-editing="editing" let-ri="rowIndex">
-        <tr [pEditableRow]="transaction">
+        <tr>
           <td>
-            <p-cellEditor>
-              <ng-template pTemplate="input">
-                <p-calendar
-                  [(ngModel)]="transaction.date"
-                  dateFormat="yy-mm-dd"
-                  [showIcon]="true"
-                  inputStyleClass="w-full">
-                </p-calendar>
-              </ng-template>
-              <ng-template pTemplate="output">
-                {{ transaction.date }}
-              </ng-template>
-            </p-cellEditor>
+            {{ transaction.date }}
           </td>
           <td>
-            <p-cellEditor>
-              <ng-template pTemplate="input">
-                <input
-                  pInputText
-                  type="text"
-                  [(ngModel)]="transaction.description"
-                  class="w-full" />
-              </ng-template>
-              <ng-template pTemplate="output">
-                {{ transaction.description }}
-                <span class="merchant-name" *ngIf="transaction.merchant_name">
-                  ({{ transaction.merchant_name }})
-                </span>
-              </ng-template>
-            </p-cellEditor>
+            {{ transaction.account_name }}
           </td>
           <td>
+            {{ transaction.description }}
+            <span class="merchant-name" *ngIf="transaction.merchant_name">
+              ({{ transaction.merchant_name }})
+            </span>
+          </td>
+          <td>
+            <span class="category-badge">{{ transaction.category }}</span>
+          </td>
+          <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
                 <input
                   pInputText
                   type="text"
-                  [(ngModel)]="transaction.category"
+                  [(ngModel)]="transaction.connelaide_category"
                   class="w-full" />
               </ng-template>
               <ng-template pTemplate="output">
-                <span class="category-badge">{{ transaction.category }}</span>
+                <span class="category-badge" *ngIf="transaction.connelaide_category">{{ transaction.connelaide_category }}</span>
               </ng-template>
             </p-cellEditor>
           </td>
-          <td style="text-align: right">
+          <td pEditableColumn style="text-align: right">
             <p-cellEditor>
               <ng-template pTemplate="input">
                 <p-inputNumber
@@ -106,44 +92,45 @@ import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pip
             </p-cellEditor>
           </td>
           <td>
-            <div class="action-buttons">
-              <button
-                *ngIf="!editing"
-                pButton
-                pRipple
-                type="button"
-                pInitEditableRow
-                icon="pi pi-pencil"
-                class="p-button-rounded p-button-text"
-                (click)="onRowEditInit(transaction)">
-              </button>
-              <button
-                *ngIf="editing"
-                pButton
-                pRipple
-                type="button"
-                pSaveEditableRow
-                icon="pi pi-check"
-                class="p-button-rounded p-button-text p-button-success"
-                (click)="onRowEditSave(transaction)">
-              </button>
-              <button
-                *ngIf="editing"
-                pButton
-                pRipple
-                type="button"
-                pCancelEditableRow
-                icon="pi pi-times"
-                class="p-button-rounded p-button-text p-button-danger"
-                (click)="onRowEditCancel(transaction, ri)">
-              </button>
-            </div>
+            <span class="pending-badge" *ngIf="transaction.pending">Pending</span>
+          </td>
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <input
+                  pInputText
+                  type="text"
+                  [(ngModel)]="transaction.note"
+                  class="w-full" />
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ transaction.note }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <p-dropdown
+                  [(ngModel)]="transaction.impacts_checking_balance"
+                  [options]="impactsBalanceOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  styleClass="w-full">
+                </p-dropdown>
+              </ng-template>
+              <ng-template pTemplate="output">
+                <span [class]="'impacts-badge impacts-' + transaction.impacts_checking_balance">
+                  {{ transaction.impacts_checking_balance }}
+                </span>
+              </ng-template>
+            </p-cellEditor>
           </td>
         </tr>
       </ng-template>
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="5" class="empty-message">No transactions in this period.</td>
+          <td colspan="9" class="empty-message">No transactions in this period.</td>
         </tr>
       </ng-template>
     </p-table>
@@ -168,15 +155,43 @@ import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pip
       font-size: 12px;
       color: #4b5563;
     }
+    .pending-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      background-color: #fef3c7;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #92400e;
+    }
+    .impacts-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .impacts-true {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    .impacts-false {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    .impacts-review_required {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
     .negative {
       color: #dc2626;
     }
     .positive {
       color: #059669;
     }
-    .action-buttons {
-      display: flex;
-      gap: 4px;
+    :host ::ng-deep .p-datatable .p-editable-column {
+      cursor: pointer;
+    }
+    :host ::ng-deep .p-datatable .p-editable-column:hover {
+      background-color: #f3f4f6;
     }
     .empty-message {
       text-align: center;
@@ -192,19 +207,15 @@ export class TransactionTableComponent {
   @Input() transactions: Transaction[] = [];
   @Output() transactionUpdate = new EventEmitter<Transaction>();
 
-  private clonedTransactions: { [id: string]: Transaction } = {};
+  impactsBalanceOptions = [
+    { label: 'True', value: 'true' },
+    { label: 'False', value: 'false' },
+    { label: 'Review Required', value: 'review_required' }
+  ];
 
-  onRowEditInit(transaction: Transaction) {
-    this.clonedTransactions[transaction.id] = { ...transaction };
-  }
-
-  onRowEditSave(transaction: Transaction) {
-    delete this.clonedTransactions[transaction.id];
-    this.transactionUpdate.emit(transaction);
-  }
-
-  onRowEditCancel(transaction: Transaction, index: number) {
-    this.transactions[index] = this.clonedTransactions[transaction.id];
-    delete this.clonedTransactions[transaction.id];
+  onCellEditComplete(event: { data?: Transaction }) {
+    if (event.data) {
+      this.transactionUpdate.emit(event.data);
+    }
   }
 }

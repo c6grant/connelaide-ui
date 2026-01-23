@@ -5,8 +5,12 @@ export interface Transaction {
   amount: number;
   category: string;
   account_id: string;
+  account_name: string;
   merchant_name?: string;
   pending: boolean;
+  connelaide_category?: string;
+  note?: string;
+  impacts_checking_balance?: string;
 }
 
 export interface TransactionChunk {
@@ -15,4 +19,15 @@ export interface TransactionChunk {
   transactions: Transaction[];
   isExpanded: boolean;
   totalAmount: number;
+}
+
+export interface RefreshStatus {
+  last_refreshed_at: string | null;
+}
+
+export interface RefreshResponse {
+  success: boolean;
+  message: string;
+  transactions_fetched?: number;
+  last_refreshed_at?: string;
 }

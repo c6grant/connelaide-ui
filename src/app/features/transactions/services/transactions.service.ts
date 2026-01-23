@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Transaction } from '../../../shared/models/transaction.model';
+import { Transaction, RefreshStatus, RefreshResponse } from '../../../shared/models/transaction.model';
 
 @Injectable({
   providedIn: 'root'
@@ -28,5 +28,13 @@ export class TransactionsService {
 
   deleteTransaction(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  getRefreshStatus(): Observable<RefreshStatus> {
+    return this.http.get<RefreshStatus>(`${this.apiUrl}/refresh-status`);
+  }
+
+  refreshTransactions(): Observable<RefreshResponse> {
+    return this.http.post<RefreshResponse>(`${this.apiUrl}/refresh`, {});
   }
 }

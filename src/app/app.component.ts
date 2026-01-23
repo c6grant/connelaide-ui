@@ -21,7 +21,7 @@ import { HeaderComponent } from './shared/components/layout/header/header.compon
     .main-content {
       flex: 1;
       padding: 20px;
-      max-width: 1200px;
+      max-width: 1600px;
       margin: 0 auto;
       width: 100%;
       box-sizing: border-box;

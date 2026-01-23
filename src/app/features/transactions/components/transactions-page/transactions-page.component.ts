@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor } from '@angular/common';
+import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { TransactionChunkComponent } from '../transaction-chunk/transaction-chunk.component';
 import { LoadingSpinnerComponent } from '../../../../shared/components/ui/loading-spinner/loading-spinner.component';
 import { Transaction, TransactionChunk } from '../../../../shared/models/transaction.model';
@@ -9,12 +9,26 @@ import { TransactionChunkService, HalfMonthPeriod } from '../../services/transac
 @Component({
   selector: 'app-transactions-page',
   standalone: true,
-  imports: [NgIf, NgFor, TransactionChunkComponent, LoadingSpinnerComponent],
+  imports: [NgIf, NgFor, DatePipe, TransactionChunkComponent, LoadingSpinnerComponent],
   template: `
     <div class="transactions-page">
       <div class="page-header">
-        <h1>Transactions</h1>
-        <p>View and manage your transactions organized by half-month periods.</p>
+        <div class="header-content">
+          <h1>Transactions</h1>
+          <p>View and manage your transactions organized by half-month periods.</p>
+        </div>
+        <div class="header-actions">
+          <span class="last-refreshed" *ngIf="lastRefreshedAt">
+            Last refreshed: {{ lastRefreshedAt | date:'short' }}
+          </span>
+          <button
+            class="refresh-btn"
+            (click)="onRefreshTransactions()"
+            [disabled]="refreshing">
+            <i class="pi pi-refresh" [class.pi-spin]="refreshing"></i>
+            {{ refreshing ? 'Refreshing...' : 'Refresh' }}
+          </button>
+        </div>
       </div>
 
       <div class="transactions-content" *ngIf="!initialLoading; else loadingTemplate">
@@ -60,15 +74,62 @@ import { TransactionChunkService, HalfMonthPeriod } from '../../services/transac
       flex-direction: column;
       gap: 24px;
     }
-    .page-header h1 {
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .header-content h1 {
       margin: 0 0 8px 0;
       font-size: 28px;
       font-weight: 600;
       color: #1f2937;
     }
-    .page-header p {
+    .header-content p {
       margin: 0;
       color: #6b7280;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .last-refreshed {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #ffffff;
+      background-color: #3b82f6;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .refresh-btn:hover:not(:disabled) {
+      background-color: #2563eb;
+    }
+    .refresh-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .refresh-btn i {
+      font-size: 14px;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .pi-spin {
+      animation: spin 1s linear infinite;
     }
     .transactions-content {
       display: flex;
@@ -130,6 +191,8 @@ export class TransactionsPageComponent implements OnInit {
   chunks: TransactionChunk[] = [];
   initialLoading = true;
   loadingMore = false;
+  refreshing = false;
+  lastRefreshedAt: Date | null = null;
   error: string | null = null;
   private currentPeriod: HalfMonthPeriod | null = null;
 
@@ -139,7 +202,49 @@ export class TransactionsPageComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.loadRefreshStatus();
     this.loadInitialTransactions();
+  }
+
+  loadRefreshStatus() {
+    this.transactionsService.getRefreshStatus().subscribe({
+      next: (status) => {
+        this.lastRefreshedAt = status.last_refreshed_at
+          ? new Date(status.last_refreshed_at)
+          : null;
+      },
+      error: () => {
+        // Silently fail - refresh status is not critical
+      }
+    });
+  }
+
+  onRefreshTransactions() {
+    if (this.refreshing) {
+      return;
+    }
+
+    this.refreshing = true;
+    this.error = null;
+
+    this.transactionsService.refreshTransactions().subscribe({
+      next: (response) => {
+        this.refreshing = false;
+        if (response.success) {
+          this.lastRefreshedAt = response.last_refreshed_at
+            ? new Date(response.last_refreshed_at)
+            : new Date();
+          // Reload transactions to show new data
+          this.loadInitialTransactions();
+        } else {
+          this.error = response.message;
+        }
+      },
+      error: (err) => {
+        this.refreshing = false;
+        this.error = 'Failed to refresh transactions. Please try again.';
+      }
+    });
   }
 
   loadInitialTransactions() {
