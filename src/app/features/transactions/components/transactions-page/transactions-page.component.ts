@@ -5,6 +5,7 @@ import { LoadingSpinnerComponent } from '../../../../shared/components/ui/loadin
 import { Transaction, TransactionChunk } from '../../../../shared/models/transaction.model';
 import { TransactionsService } from '../../services/transactions.service';
 import { TransactionChunkService, HalfMonthPeriod } from '../../services/transaction-chunk.service';
+import { MessageService } from 'primeng/api';
 
 @Component({
   selector: 'app-transactions-page',
@@ -198,7 +199,8 @@ export class TransactionsPageComponent implements OnInit {
 
   constructor(
     private transactionsService: TransactionsService,
-    private chunkService: TransactionChunkService
+    private chunkService: TransactionChunkService,
+    private messageService: MessageService
   ) {}
 
   ngOnInit() {
@@ -304,10 +306,20 @@ export class TransactionsPageComponent implements OnInit {
   onTransactionUpdate(transaction: Transaction) {
     this.transactionsService.updateTransaction(transaction.id, transaction).subscribe({
       next: () => {
-        // Transaction updated successfully
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Saved',
+          detail: 'Transaction updated',
+          life: 3000
+        });
       },
       error: (err) => {
-        this.error = 'Failed to update transaction: ' + err.message;
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to save changes',
+          life: 5000
+        });
       }
     });
   }
