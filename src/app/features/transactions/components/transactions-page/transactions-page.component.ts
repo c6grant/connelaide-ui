@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { TransactionChunkComponent } from '../transaction-chunk/transaction-chunk.component';
 import { LoadingSpinnerComponent } from '../../../../shared/components/ui/loading-spinner/loading-spinner.component';
-import { Transaction, TransactionChunk } from '../../../../shared/models/transaction.model';
+import { Transaction, TransactionChunk, TransactionUpdate } from '../../../../shared/models/transaction.model';
 import { TransactionsService } from '../../services/transactions.service';
 import { TransactionChunkService, HalfMonthPeriod } from '../../services/transaction-chunk.service';
 import { MessageService } from 'primeng/api';
@@ -304,7 +304,15 @@ export class TransactionsPageComponent implements OnInit {
   }
 
   onTransactionUpdate(transaction: Transaction) {
-    this.transactionsService.updateTransaction(transaction.id, transaction).subscribe({
+    // Build update object with only the editable fields
+    const updates: TransactionUpdate = {
+      connelaide_category_id: transaction.connelaide_category_id,
+      edited_amount: transaction.edited_amount,
+      note: transaction.note,
+      impacts_checking_balance: transaction.impacts_checking_balance
+    };
+
+    this.transactionsService.updateTransaction(transaction.id, updates).subscribe({
       next: () => {
         this.messageService.add({
           severity: 'success',

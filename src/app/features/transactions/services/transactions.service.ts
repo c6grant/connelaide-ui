@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Transaction, RefreshStatus, RefreshResponse } from '../../../shared/models/transaction.model';
+import { Transaction, TransactionUpdate, RefreshStatus, RefreshResponse } from '../../../shared/models/transaction.model';
 
 @Injectable({
   providedIn: 'root'
@@ -22,7 +22,7 @@ export class TransactionsService {
     return this.http.get<Transaction>(`${this.apiUrl}/${id}`);
   }
 
-  updateTransaction(id: string, updates: Partial<Transaction>): Observable<Transaction> {
+  updateTransaction(id: string, updates: TransactionUpdate): Observable<Transaction> {
     return this.http.patch<Transaction>(`${this.apiUrl}/${id}`, updates);
   }
 

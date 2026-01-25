@@ -378,8 +378,18 @@ export class TransactionTableComponent implements OnInit {
   onFieldEditIfChanged(transaction: Transaction, field: string, currentValue: unknown): void {
     const key = `${transaction.id}:${field}`;
 
-    // If no original value stored, we can't determine if it changed - skip update
     if (!this.originalValues.has(key)) {
+      // For category field: onFocus may not fire reliably in PrimeNG cell editor.
+      // Process the category selection anyway - server handles idempotency.
+      if (field === 'connelaide_category' && typeof currentValue === 'string' && currentValue.trim()) {
+        const existingCategory = this.categories.find(c => c.name === currentValue);
+        if (existingCategory) {
+          transaction.connelaide_category_id = existingCategory.id;
+          transaction.connelaide_category = existingCategory.name;
+          this.transactionUpdate.emit(transaction);
+        }
+        // If category not found, could show create dialog, but skip for now
+      }
       return;
     }
 
@@ -393,9 +403,9 @@ export class TransactionTableComponent implements OnInit {
 
     // Handle connelaide_category field with new category creation
     if (field === 'connelaide_category' && typeof currentValue === 'string' && currentValue.trim()) {
-      const categoryExists = this.categories.some(c => c.name === currentValue);
+      const existingCategory = this.categories.find(c => c.name === currentValue);
 
-      if (!categoryExists) {
+      if (!existingCategory) {
         this.confirmationService.confirm({
           message: `Category "${currentValue}" doesn't exist. Create it?`,
           header: 'Create New Category',
@@ -404,6 +414,9 @@ export class TransactionTableComponent implements OnInit {
             this.categoriesService.createCategory({ name: currentValue }).subscribe({
               next: (newCategory) => {
                 this.categories.push(newCategory);
+                // Set both the ID and name on the transaction
+                transaction.connelaide_category_id = newCategory.id;
+                transaction.connelaide_category = newCategory.name;
                 this.messageService.add({
                   severity: 'success',
                   summary: 'Category Created',
@@ -430,6 +443,10 @@ export class TransactionTableComponent implements OnInit {
         });
         return;
       }
+
+      // Existing category selected - set the ID
+      transaction.connelaide_category_id = existingCategory.id;
+      transaction.connelaide_category = existingCategory.name;
     }
 
     // For existing categories or other fields, emit the update

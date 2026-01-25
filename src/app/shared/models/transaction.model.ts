@@ -9,7 +9,15 @@ export interface Transaction {
   account_name: string;
   merchant_name?: string;
   pending: boolean;
-  connelaide_category?: string;
+  connelaide_category_id?: number | null;
+  connelaide_category?: string | null;  // Populated from joined relationship on server
+  note?: string;
+  impacts_checking_balance?: string;
+}
+
+export interface TransactionUpdate {
+  connelaide_category_id?: number | null;
+  edited_amount?: number | null;
   note?: string;
   impacts_checking_balance?: string;
 }
