@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Transaction, TransactionChunk } from '../../../shared/models/transaction.model';
+import { PayPeriod } from '../../../shared/models/pay-period.model';
 
 export interface HalfMonthPeriod {
   start: Date;
@@ -84,6 +85,23 @@ export class TransactionChunkService {
       transactions,
       isExpanded: false,
       totalAmount
+    };
+  }
+
+  /**
+   * Create a TransactionChunk from transactions and a PayPeriod object
+   */
+  createChunkFromPayPeriod(transactions: Transaction[], payPeriod: PayPeriod): TransactionChunk {
+    const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const [startYear, startMonth, startDay] = payPeriod.start_date.split('-').map(Number);
+    const [endYear, endMonth, endDay] = payPeriod.end_date.split('-').map(Number);
+    return {
+      startDate: new Date(startYear, startMonth - 1, startDay),
+      endDate: new Date(endYear, endMonth - 1, endDay),
+      transactions,
+      isExpanded: false,
+      totalAmount,
+      checkingBudget: payPeriod.checking_budget ?? undefined
     };
   }
 

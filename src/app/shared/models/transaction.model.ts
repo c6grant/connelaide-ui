@@ -28,6 +28,7 @@ export interface TransactionChunk {
   transactions: Transaction[];
   isExpanded: boolean;
   totalAmount: number;
+  checkingBudget?: number;
 }
 
 export interface RefreshStatus {

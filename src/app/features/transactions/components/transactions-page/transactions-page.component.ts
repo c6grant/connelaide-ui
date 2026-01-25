@@ -1,22 +1,25 @@
 import { Component, OnInit } from '@angular/core';
 import { NgIf, NgFor, DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { TransactionChunkComponent } from '../transaction-chunk/transaction-chunk.component';
 import { LoadingSpinnerComponent } from '../../../../shared/components/ui/loading-spinner/loading-spinner.component';
 import { Transaction, TransactionChunk, TransactionUpdate } from '../../../../shared/models/transaction.model';
+import { PayPeriod } from '../../../../shared/models/pay-period.model';
 import { TransactionsService } from '../../services/transactions.service';
-import { TransactionChunkService, HalfMonthPeriod } from '../../services/transaction-chunk.service';
+import { TransactionChunkService } from '../../services/transaction-chunk.service';
+import { PayPeriodsService } from '../../../pay-periods/services/pay-periods.service';
 import { MessageService } from 'primeng/api';
 
 @Component({
   selector: 'app-transactions-page',
   standalone: true,
-  imports: [NgIf, NgFor, DatePipe, TransactionChunkComponent, LoadingSpinnerComponent],
+  imports: [NgIf, NgFor, DatePipe, RouterLink, TransactionChunkComponent, LoadingSpinnerComponent],
   template: `
     <div class="transactions-page">
       <div class="page-header">
         <div class="header-content">
           <h1>Transactions</h1>
-          <p>View and manage your transactions organized by half-month periods.</p>
+          <p>View and manage your transactions organized by pay periods.</p>
         </div>
         <div class="header-actions">
           <span class="last-refreshed" *ngIf="lastRefreshedAt">
@@ -33,29 +36,41 @@ import { MessageService } from 'primeng/api';
       </div>
 
       <div class="transactions-content" *ngIf="!initialLoading; else loadingTemplate">
-        <ng-container *ngIf="chunks.length > 0; else noTransactions">
-          <app-transaction-chunk
-            *ngFor="let chunk of chunks; let i = index"
-            [chunk]="chunk"
-            (chunkToggle)="onChunkToggle(i, $event)"
-            (transactionUpdate)="onTransactionUpdate($event)">
-          </app-transaction-chunk>
+        <ng-container *ngIf="!noPayPeriods; else noPayPeriodsTemplate">
+          <ng-container *ngIf="chunks.length > 0; else noTransactions">
+            <app-transaction-chunk
+              *ngFor="let chunk of chunks; let i = index"
+              [chunk]="chunk"
+              (chunkToggle)="onChunkToggle(i, $event)"
+              (transactionUpdate)="onTransactionUpdate($event)">
+            </app-transaction-chunk>
 
-          <div class="load-more-container">
-            <button
-              class="load-more-btn"
-              (click)="loadMoreTransactions()"
-              [disabled]="loadingMore">
-              <span *ngIf="!loadingMore">Load More</span>
-              <span *ngIf="loadingMore">Loading...</span>
-            </button>
-          </div>
+            <div class="load-more-container" *ngIf="hasMorePayPeriods">
+              <button
+                class="load-more-btn"
+                (click)="loadMoreTransactions()"
+                [disabled]="loadingMore">
+                <span *ngIf="!loadingMore">Load More</span>
+                <span *ngIf="loadingMore">Loading...</span>
+              </button>
+            </div>
+          </ng-container>
+          <ng-template #noTransactions>
+            <div class="empty-state">
+              <i class="pi pi-inbox"></i>
+              <h3>No transactions yet</h3>
+              <p>Your transactions will appear here once they're synced.</p>
+            </div>
+          </ng-template>
         </ng-container>
-        <ng-template #noTransactions>
+        <ng-template #noPayPeriodsTemplate>
           <div class="empty-state">
-            <i class="pi pi-inbox"></i>
-            <h3>No transactions yet</h3>
-            <p>Your transactions will appear here once they're synced.</p>
+            <i class="pi pi-calendar"></i>
+            <h3>No pay periods defined</h3>
+            <p>You need to create pay periods before viewing transactions.</p>
+            <a routerLink="/pay-periods" class="setup-link">
+              Set up Pay Periods
+            </a>
           </div>
         </ng-template>
       </div>
@@ -186,6 +201,20 @@ import { MessageService } from 'primeng/api';
       opacity: 0.6;
       cursor: not-allowed;
     }
+    .setup-link {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 10px 24px;
+      background-color: #3b82f6;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+    }
+    .setup-link:hover {
+      background-color: #2563eb;
+    }
   `]
 })
 export class TransactionsPageComponent implements OnInit {
@@ -195,17 +224,22 @@ export class TransactionsPageComponent implements OnInit {
   refreshing = false;
   lastRefreshedAt: Date | null = null;
   error: string | null = null;
-  private currentPeriod: HalfMonthPeriod | null = null;
+  noPayPeriods = false;
+  hasMorePayPeriods = false;
+
+  private payPeriods: PayPeriod[] = [];
+  private currentPayPeriodIndex = 0;
 
   constructor(
     private transactionsService: TransactionsService,
     private chunkService: TransactionChunkService,
+    private payPeriodsService: PayPeriodsService,
     private messageService: MessageService
   ) {}
 
   ngOnInit() {
     this.loadRefreshStatus();
-    this.loadInitialTransactions();
+    this.loadPayPeriodsAndTransactions();
   }
 
   loadRefreshStatus() {
@@ -217,6 +251,53 @@ export class TransactionsPageComponent implements OnInit {
       },
       error: () => {
         // Silently fail - refresh status is not critical
+      }
+    });
+  }
+
+  loadPayPeriodsAndTransactions() {
+    this.initialLoading = true;
+    this.error = null;
+    this.noPayPeriods = false;
+
+    this.payPeriodsService.getPayPeriods().subscribe({
+      next: (payPeriods) => {
+        this.payPeriods = payPeriods;
+
+        if (payPeriods.length === 0) {
+          this.noPayPeriods = true;
+          this.initialLoading = false;
+          return;
+        }
+
+        this.hasMorePayPeriods = payPeriods.length > 1;
+        this.currentPayPeriodIndex = 0;
+        this.loadTransactionsForPayPeriod(payPeriods[0], true);
+      },
+      error: (err) => {
+        this.error = 'Failed to load pay periods. Please try again.';
+        this.initialLoading = false;
+      }
+    });
+  }
+
+  loadTransactionsForPayPeriod(payPeriod: PayPeriod, isFirst: boolean) {
+    this.transactionsService.getTransactions(payPeriod.start_date, payPeriod.end_date).subscribe({
+      next: (transactions) => {
+        const chunk = this.chunkService.createChunkFromPayPeriod(transactions, payPeriod);
+        if (isFirst) {
+          chunk.isExpanded = true; // Expand first chunk by default
+          this.chunks = [chunk];
+        } else {
+          this.chunks.push(chunk);
+        }
+        this.initialLoading = false;
+        this.loadingMore = false;
+      },
+      error: (err) => {
+        this.error = 'Failed to load transactions. Please try again.';
+        this.initialLoading = false;
+        this.loadingMore = false;
       }
     });
   }
@@ -237,7 +318,7 @@ export class TransactionsPageComponent implements OnInit {
             ? new Date(response.last_refreshed_at)
             : new Date();
           // Reload transactions to show new data
-          this.loadInitialTransactions();
+          this.loadPayPeriodsAndTransactions();
         } else {
           this.error = response.message;
         }
@@ -249,54 +330,18 @@ export class TransactionsPageComponent implements OnInit {
     });
   }
 
-  loadInitialTransactions() {
-    this.initialLoading = true;
-    this.error = null;
-
-    // Calculate current half-month period
-    this.currentPeriod = this.chunkService.getHalfMonthPeriod(new Date());
-
-    const startDate = this.chunkService.formatDateForApi(this.currentPeriod.start);
-    const endDate = this.chunkService.formatDateForApi(this.currentPeriod.end);
-
-    this.transactionsService.getTransactions(startDate, endDate).subscribe({
-      next: (transactions) => {
-        const chunk = this.chunkService.createChunkFromPeriod(transactions, this.currentPeriod!);
-        chunk.isExpanded = true; // Expand first chunk by default
-        this.chunks = [chunk];
-        this.initialLoading = false;
-      },
-      error: (err) => {
-        this.error = 'Failed to load transactions. Please try again.';
-        this.initialLoading = false;
-      }
-    });
-  }
-
   loadMoreTransactions() {
-    if (!this.currentPeriod || this.loadingMore) {
+    if (this.loadingMore || this.currentPayPeriodIndex >= this.payPeriods.length - 1) {
       return;
     }
 
     this.loadingMore = true;
+    this.currentPayPeriodIndex++;
 
-    // Get the previous period
-    const previousPeriod = this.chunkService.getPreviousPeriod(this.currentPeriod.start);
-    const startDate = this.chunkService.formatDateForApi(previousPeriod.start);
-    const endDate = this.chunkService.formatDateForApi(previousPeriod.end);
+    const nextPayPeriod = this.payPeriods[this.currentPayPeriodIndex];
+    this.hasMorePayPeriods = this.currentPayPeriodIndex < this.payPeriods.length - 1;
 
-    this.transactionsService.getTransactions(startDate, endDate).subscribe({
-      next: (transactions) => {
-        const chunk = this.chunkService.createChunkFromPeriod(transactions, previousPeriod);
-        this.chunks.push(chunk);
-        this.currentPeriod = previousPeriod;
-        this.loadingMore = false;
-      },
-      error: (err) => {
-        this.error = 'Failed to load more transactions. Please try again.';
-        this.loadingMore = false;
-      }
-    });
+    this.loadTransactionsForPayPeriod(nextPayPeriod, false);
   }
 
   onChunkToggle(index: number, expanded: boolean) {

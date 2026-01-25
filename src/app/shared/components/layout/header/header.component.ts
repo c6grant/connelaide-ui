@@ -19,6 +19,7 @@ import { MenuItem } from 'primeng/api';
             <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
             <a routerLink="/transactions" routerLinkActive="active">Transactions</a>
             <a routerLink="/categories" routerLinkActive="active">Categories</a>
+            <a routerLink="/pay-periods" routerLinkActive="active">Pay Periods</a>
           </nav>
         </div>
         <div class="auth-buttons">

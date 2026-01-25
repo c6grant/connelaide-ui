@@ -1,4 +1,5 @@
 import { Component, Input, Output, EventEmitter, ElementRef, AfterViewInit } from '@angular/core';
+import { NgIf, CurrencyPipe } from '@angular/common';
 import { PanelModule } from 'primeng/panel';
 import { Transaction, TransactionChunk } from '../../../../shared/models/transaction.model';
 import { TransactionTableComponent } from '../transaction-table/transaction-table.component';
@@ -8,7 +9,7 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
 @Component({
   selector: 'app-transaction-chunk',
   standalone: true,
-  imports: [PanelModule, TransactionTableComponent, CurrencyFormatPipe, DateRangePipe],
+  imports: [NgIf, CurrencyPipe, PanelModule, TransactionTableComponent, CurrencyFormatPipe, DateRangePipe],
   template: `
     <p-panel
       [header]="chunk.startDate | dateRange: chunk.endDate"
@@ -23,6 +24,22 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
           </span>
         </div>
       </ng-template>
+      <div class="budget-summary" *ngIf="chunk.checkingBudget">
+        <div class="budget-item">
+          <span class="budget-label">Checking Budget</span>
+          <span class="budget-value">{{ chunk.checkingBudget | currency }}</span>
+        </div>
+        <div class="budget-item">
+          <span class="budget-label">Amount Spent</span>
+          <span class="budget-value spent">{{ amountSpent | currency }}</span>
+        </div>
+        <div class="budget-item primary">
+          <span class="budget-label">Amount Remaining</span>
+          <span class="budget-value remaining" [class.negative]="amountRemaining < 0">
+            {{ amountRemaining | currency }}
+          </span>
+        </div>
+      </div>
       <app-transaction-table
         [transactions]="chunk.transactions"
         (transactionUpdate)="onTransactionUpdate($event)">
@@ -66,6 +83,49 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
       flex: 1;
       min-width: 0;
     }
+    .budget-summary {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      background-color: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .budget-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .budget-item.primary {
+      background-color: #eff6ff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #bfdbfe;
+    }
+    .budget-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .budget-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .budget-value.spent {
+      color: #dc2626;
+    }
+    .budget-value.remaining {
+      color: #059669;
+      font-size: 20px;
+    }
+    .budget-value.remaining.negative {
+      color: #dc2626;
+    }
   `]
 })
 export class TransactionChunkComponent implements AfterViewInit {
@@ -74,6 +134,18 @@ export class TransactionChunkComponent implements AfterViewInit {
   @Output() transactionUpdate = new EventEmitter<Transaction>();
 
   constructor(private elementRef: ElementRef) {}
+
+  get amountSpent(): number {
+    return Math.abs(
+      this.chunk.transactions
+        .filter(tx => tx.impacts_checking_balance === 'true')
+        .reduce((sum, tx) => sum + (tx.edited_amount ?? tx.amount), 0)
+    );
+  }
+
+  get amountRemaining(): number {
+    return (this.chunk.checkingBudget ?? 0) - this.amountSpent;
+  }
 
   ngAfterViewInit() {
     // Make entire header clickable to toggle panel

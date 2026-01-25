@@ -17,5 +17,9 @@ export const routes: Routes = [
   {
     path: 'categories',
     loadChildren: () => import('./features/categories/categories.routes').then(m => m.CATEGORIES_ROUTES)
+  },
+  {
+    path: 'pay-periods',
+    loadChildren: () => import('./features/pay-periods/pay-periods.routes').then(m => m.PAY_PERIODS_ROUTES)
   }
 ];

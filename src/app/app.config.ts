@@ -46,6 +46,14 @@ export const appConfig: ApplicationConfig = {
           {
             uri: '/api/v1/connalaide-categories/*',
             allowAnonymous: false
+          },
+          {
+            uri: '/api/v1/pay-periods',
+            allowAnonymous: false
+          },
+          {
+            uri: '/api/v1/pay-periods/*',
+            allowAnonymous: false
           }
         ]
       }
