@@ -174,6 +174,7 @@ import { ConnalaideCategory } from '../../../../shared/models/category.model';
       font-weight: 500;
       font-size: 12px;
       text-transform: uppercase;
+      white-space: nowrap;
     }
     .merchant-name {
       color: #9ca3af;
@@ -242,6 +243,62 @@ import { ConnalaideCategory } from '../../../../shared/models/category.model';
     }
     .w-full {
       width: 100%;
+    }
+
+    /* Prevent row height changes during edit */
+    :host ::ng-deep .p-datatable.p-datatable-sm .p-datatable-tbody > tr > td {
+      height: 40px;
+      padding: 0.25rem 0.5rem;
+      vertical-align: middle;
+    }
+
+    /* Compact input styling for edit mode */
+    :host ::ng-deep .p-datatable .p-inputtext {
+      padding: 0.25rem 0.5rem;
+      font-size: 14px;
+      height: 28px;
+    }
+
+    :host ::ng-deep .p-datatable .p-inputnumber-input {
+      padding: 0.25rem 0.5rem;
+      font-size: 14px;
+      height: 28px;
+    }
+
+    :host ::ng-deep .p-datatable .p-autocomplete .p-inputtext {
+      padding: 0.25rem 0.5rem;
+      font-size: 14px;
+      height: 28px;
+    }
+
+    :host ::ng-deep .p-datatable .p-dropdown {
+      height: 28px;
+    }
+
+    :host ::ng-deep .p-datatable .p-dropdown .p-dropdown-label {
+      padding: 0.25rem 0.5rem;
+      font-size: 14px;
+    }
+
+    /* Fix autocomplete dropdown button height */
+    :host ::ng-deep .p-datatable .p-autocomplete {
+      height: 28px;
+    }
+
+    :host ::ng-deep .p-datatable .p-autocomplete-dropdown {
+      height: 28px;
+      width: 28px;
+      padding: 0;
+    }
+
+    /* Fix inputnumber wrapper */
+    :host ::ng-deep .p-datatable .p-inputnumber {
+      height: 28px;
+    }
+
+    /* Prevent date column from wrapping */
+    :host ::ng-deep .p-datatable .p-datatable-tbody > tr > td:first-child {
+      white-space: nowrap;
     }
   `]
 })
@@ -385,6 +442,7 @@ export class TransactionTableComponent implements OnInit {
 
   onAmountChange(transaction: Transaction, newValue: number): void {
     // Clear edited_amount if user reverts to original value
-    transaction.edited_amount = newValue === transaction.amount ? undefined : newValue;
+    // Use null (not undefined) so it serializes to JSON and the server clears the field
+    transaction.edited_amount = newValue === transaction.amount ? null : newValue;
   }
 }

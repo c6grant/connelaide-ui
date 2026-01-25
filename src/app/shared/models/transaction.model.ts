@@ -3,7 +3,7 @@ export interface Transaction {
   date: string;
   description: string;
   amount: number;
-  edited_amount?: number;
+  edited_amount?: number | null;
   category: string;
   account_id: string;
   account_name: string;
