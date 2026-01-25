@@ -377,6 +377,12 @@ export class TransactionTableComponent implements OnInit {
 
   onFieldEditIfChanged(transaction: Transaction, field: string, currentValue: unknown): void {
     const key = `${transaction.id}:${field}`;
+
+    // If no original value stored, we can't determine if it changed - skip update
+    if (!this.originalValues.has(key)) {
+      return;
+    }
+
     const originalValue = this.originalValues.get(key);
     this.originalValues.delete(key);
 
