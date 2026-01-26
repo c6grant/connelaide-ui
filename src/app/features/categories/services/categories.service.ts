@@ -19,11 +19,11 @@ export class CategoriesService {
     return this.http.get<ConnalaideCategory>(`${this.apiUrl}/${id}`);
   }
 
-  createCategory(data: { name: string }): Observable<ConnalaideCategory> {
+  createCategory(data: { name: string; target_budget?: number }): Observable<ConnalaideCategory> {
     return this.http.post<ConnalaideCategory>(this.apiUrl, data);
   }
 
-  updateCategory(id: number, data: { name: string }): Observable<ConnalaideCategory> {
+  updateCategory(id: number, data: { name?: string; target_budget?: number }): Observable<ConnalaideCategory> {
     return this.http.patch<ConnalaideCategory>(`${this.apiUrl}/${id}`, data);
   }
 

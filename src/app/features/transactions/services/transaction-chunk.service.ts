@@ -83,6 +83,7 @@ export class TransactionChunkService {
       startDate: period.start,
       endDate: period.end,
       transactions,
+      projectedExpenses: [],
       isExpanded: false,
       totalAmount
     };
@@ -99,6 +100,7 @@ export class TransactionChunkService {
       startDate: new Date(startYear, startMonth - 1, startDay),
       endDate: new Date(endYear, endMonth - 1, endDay),
       transactions,
+      projectedExpenses: [],
       isExpanded: false,
       totalAmount,
       checkingBudget: payPeriod.checking_budget ?? undefined
@@ -158,6 +160,7 @@ export class TransactionChunkService {
       startDate,
       endDate,
       transactions,
+      projectedExpenses: [],
       isExpanded: false,
       totalAmount
     };

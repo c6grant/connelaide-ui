@@ -54,6 +54,14 @@ export const appConfig: ApplicationConfig = {
           {
             uri: '/api/v1/pay-periods/*',
             allowAnonymous: false
+          },
+          {
+            uri: '/api/v1/projected-expenses',
+            allowAnonymous: false
+          },
+          {
+            uri: '/api/v1/projected-expenses/*',
+            allowAnonymous: false
           }
         ]
       }

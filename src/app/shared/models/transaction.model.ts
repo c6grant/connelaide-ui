@@ -26,10 +26,15 @@ export interface TransactionChunk {
   startDate: Date;
   endDate: Date;
   transactions: Transaction[];
+  projectedExpenses: ProjectedExpense[];
   isExpanded: boolean;
   totalAmount: number;
   checkingBudget?: number;
 }
+
+// Re-export for convenience
+import { ProjectedExpense } from './projected-expense.model';
+export { ProjectedExpense } from './projected-expense.model';
 
 export interface RefreshStatus {
   last_refreshed_at: string | null;

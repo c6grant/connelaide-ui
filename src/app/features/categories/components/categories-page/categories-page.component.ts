@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { NgIf, NgFor } from '@angular/common';
+import { NgIf, NgFor, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
@@ -16,10 +17,12 @@ import { CategoriesService } from '../../services/categories.service';
   imports: [
     NgIf,
     NgFor,
+    CurrencyPipe,
     FormsModule,
     TableModule,
     ButtonModule,
     InputTextModule,
+    InputNumberModule,
     ToastModule,
     ConfirmDialogModule
   ],
@@ -43,6 +46,16 @@ import { CategoriesService } from '../../services/categories.service';
             placeholder="Enter category name"
             (keydown.enter)="addCategory()"
             class="category-input" />
+          <p-inputNumber
+            [(ngModel)]="newCategoryBudget"
+            mode="currency"
+            currency="USD"
+            locale="en-US"
+            placeholder="Target Budget (optional)"
+            [minFractionDigits]="0"
+            [maxFractionDigits]="2"
+            class="budget-input">
+          </p-inputNumber>
           <p-button
             label="Add Category"
             icon="pi pi-plus"
@@ -50,6 +63,11 @@ import { CategoriesService } from '../../services/categories.service';
             [disabled]="!newCategoryName.trim()">
           </p-button>
         </div>
+      </div>
+
+      <div class="budget-summary" *ngIf="totalTargetBudget > 0">
+        <span class="summary-label">Total Target Budget:</span>
+        <span class="summary-value">{{ totalTargetBudget | currency:'USD':'symbol':'1.2-2' }}</span>
       </div>
 
       <div class="table-container" *ngIf="categories.length > 0">
@@ -64,6 +82,7 @@ import { CategoriesService } from '../../services/categories.service';
           <ng-template pTemplate="header">
             <tr>
               <th>Name</th>
+              <th style="width: 180px">Target Budget</th>
               <th style="width: 100px; text-align: center">Actions</th>
             </tr>
           </ng-template>
@@ -85,6 +104,25 @@ import { CategoriesService } from '../../services/categories.service';
                   </ng-template>
                 </p-cellEditor>
               </td>
+              <td pEditableColumn>
+                <p-cellEditor>
+                  <ng-template pTemplate="input">
+                    <p-inputNumber
+                      [(ngModel)]="category.target_budget"
+                      mode="currency"
+                      currency="USD"
+                      locale="en-US"
+                      [minFractionDigits]="0"
+                      [maxFractionDigits]="2"
+                      (onBlur)="onCategoryBudgetBlur(category)"
+                      class="w-full">
+                    </p-inputNumber>
+                  </ng-template>
+                  <ng-template pTemplate="output">
+                    {{ category.target_budget != null ? (category.target_budget | currency:'USD':'symbol':'1.2-2') : '-' }}
+                  </ng-template>
+                </p-cellEditor>
+              </td>
               <td style="text-align: center">
                 <p-button
                   icon="pi pi-trash"
@@ -97,7 +135,7 @@ import { CategoriesService } from '../../services/categories.service';
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="2" class="empty-message">No categories found. Add one above!</td>
+              <td colspan="3" class="empty-message">No categories found. Add one above!</td>
             </tr>
           </ng-template>
         </p-table>
@@ -147,6 +185,28 @@ import { CategoriesService } from '../../services/categories.service';
     }
     .category-input {
       flex: 1;
+    }
+    .budget-input {
+      width: 180px;
+    }
+    .budget-summary {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .summary-label {
+      font-weight: 500;
+      color: #166534;
+    }
+    .summary-value {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #166534;
     }
     .table-container {
       background: #ffffff;
@@ -208,10 +268,16 @@ import { CategoriesService } from '../../services/categories.service';
 export class CategoriesPageComponent implements OnInit {
   categories: ConnalaideCategory[] = [];
   newCategoryName = '';
+  newCategoryBudget: number | null = null;
   loading = false;
 
   // Track original values for edit detection
   private originalNames = new Map<number, string>();
+  private originalBudgets = new Map<number, number | null>();
+
+  get totalTargetBudget(): number {
+    return this.categories.reduce((sum, c) => sum + (c.target_budget || 0), 0);
+  }
 
   constructor(
     private categoriesService: CategoriesService,
@@ -228,8 +294,11 @@ export class CategoriesPageComponent implements OnInit {
     this.categoriesService.getCategories().subscribe({
       next: (categories) => {
         this.categories = categories;
-        // Store original names for edit detection
-        categories.forEach(c => this.originalNames.set(c.id, c.name));
+        // Store original values for edit detection
+        categories.forEach(c => {
+          this.originalNames.set(c.id, c.name);
+          this.originalBudgets.set(c.id, c.target_budget ?? null);
+        });
         this.loading = false;
       },
       error: (error) => {
@@ -248,11 +317,18 @@ export class CategoriesPageComponent implements OnInit {
     const name = this.newCategoryName.trim();
     if (!name) return;
 
-    this.categoriesService.createCategory({ name }).subscribe({
+    const data: { name: string; target_budget?: number } = { name };
+    if (this.newCategoryBudget != null) {
+      data.target_budget = this.newCategoryBudget;
+    }
+
+    this.categoriesService.createCategory(data).subscribe({
       next: (category) => {
         this.categories.push(category);
         this.originalNames.set(category.id, category.name);
+        this.originalBudgets.set(category.id, category.target_budget ?? null);
         this.newCategoryName = '';
+        this.newCategoryBudget = null;
         this.messageService.add({
           severity: 'success',
           summary: 'Success',
@@ -301,6 +377,36 @@ export class CategoriesPageComponent implements OnInit {
     } else if (!newName) {
       // Revert if name is empty
       category.name = originalName || '';
+    }
+  }
+
+  onCategoryBudgetBlur(category: ConnalaideCategory): void {
+    const originalBudget = this.originalBudgets.get(category.id);
+    const newBudget = category.target_budget ?? null;
+
+    // Only update if budget changed
+    if (newBudget !== originalBudget) {
+      this.categoriesService.updateCategory(category.id, { target_budget: newBudget ?? undefined }).subscribe({
+        next: (updated) => {
+          this.originalBudgets.set(category.id, updated.target_budget ?? null);
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: `Target budget updated`
+          });
+        },
+        error: (error) => {
+          console.error('Error updating category budget:', error);
+          // Revert to original budget on error
+          category.target_budget = originalBudget ?? undefined;
+          const detail = error.error?.detail || 'Failed to update target budget';
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail
+          });
+        }
+      });
     }
   }
 

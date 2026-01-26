@@ -1,7 +1,9 @@
 import { Component, Input, Output, EventEmitter, ElementRef, AfterViewInit } from '@angular/core';
 import { NgIf, CurrencyPipe } from '@angular/common';
 import { PanelModule } from 'primeng/panel';
+import { ButtonModule } from 'primeng/button';
 import { Transaction, TransactionChunk } from '../../../../shared/models/transaction.model';
+import { ProjectedExpense } from '../../../../shared/models/projected-expense.model';
 import { TransactionTableComponent } from '../transaction-table/transaction-table.component';
 import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pipe';
 import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
@@ -9,7 +11,7 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
 @Component({
   selector: 'app-transaction-chunk',
   standalone: true,
-  imports: [NgIf, CurrencyPipe, PanelModule, TransactionTableComponent, CurrencyFormatPipe, DateRangePipe],
+  imports: [NgIf, CurrencyPipe, PanelModule, ButtonModule, TransactionTableComponent, CurrencyFormatPipe, DateRangePipe],
   template: `
     <p-panel
       [header]="chunk.startDate | dateRange: chunk.endDate"
@@ -39,10 +41,34 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
             {{ amountRemaining | currency }}
           </span>
         </div>
+        <div class="budget-item add-projected">
+          <button
+            pButton
+            type="button"
+            icon="pi pi-plus"
+            label="Add Projected Expense"
+            class="p-button-outlined p-button-sm"
+            (click)="onAddProjectedExpense()">
+          </button>
+        </div>
+      </div>
+      <div class="add-projected-standalone" *ngIf="!chunk.checkingBudget">
+        <button
+          pButton
+          type="button"
+          icon="pi pi-plus"
+          label="Add Projected Expense"
+          class="p-button-outlined p-button-sm"
+          (click)="onAddProjectedExpense()">
+        </button>
       </div>
       <app-transaction-table
         [transactions]="chunk.transactions"
-        (transactionUpdate)="onTransactionUpdate($event)">
+        [projectedExpenses]="chunk.projectedExpenses"
+        (transactionUpdate)="onTransactionUpdate($event)"
+        (projectedExpenseUpdate)="projectedExpenseUpdate.emit($event)"
+        (projectedExpenseDelete)="projectedExpenseDelete.emit($event)"
+        (projectedExpenseMerge)="projectedExpenseMerge.emit($event)">
       </app-transaction-table>
     </p-panel>
   `,
@@ -56,15 +82,24 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
       align-items: center;
       gap: 16px;
       margin-right: 8px;
+      overflow: hidden;
+      min-width: 0;
+      white-space: nowrap;
     }
     .transaction-count {
       font-size: 14px;
       color: #6b7280;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .total-amount {
       font-size: 16px;
       font-weight: 600;
       color: #059669;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .total-amount.negative {
       color: #dc2626;
@@ -73,10 +108,20 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
     :host ::ng-deep .p-panel .p-panel-header {
       background-color: #f9fafb;
       cursor: pointer;
+      overflow: hidden;
+      flex-wrap: nowrap;
     }
-    /* Ensure header icons area doesn't get truncated */
-    :host ::ng-deep .p-panel .p-panel-icons {
-      flex-shrink: 0;
+    /* Target correct icons containers (both variants for safety) */
+    :host ::ng-deep .p-panel .p-panel-icons,
+    :host ::ng-deep .p-panel .p-panel-icons-end,
+    :host ::ng-deep .p-panel .p-panel-icons-center {
+      flex-shrink: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+    /* Hide summary when panel is collapsed to prevent text bleeding */
+    :host ::ng-deep .p-panel.p-panel-collapsed .chunk-summary {
+      display: none;
     }
     /* Ensure title can shrink but icons stay visible */
     :host ::ng-deep .p-panel .p-panel-title {
@@ -91,6 +136,7 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
       background-color: #f8fafc;
       border-radius: 8px;
       border: 1px solid #e2e8f0;
+      align-items: center;
     }
     .budget-item {
       flex: 1;
@@ -103,6 +149,10 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
       padding: 8px 12px;
       border-radius: 6px;
       border: 1px solid #bfdbfe;
+    }
+    .budget-item.add-projected {
+      flex: 0;
+      justify-content: center;
     }
     .budget-label {
       font-size: 12px;
@@ -126,21 +176,32 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
     .budget-value.remaining.negative {
       color: #dc2626;
     }
+    .add-projected-standalone {
+      margin-bottom: 12px;
+    }
   `]
 })
 export class TransactionChunkComponent implements AfterViewInit {
   @Input() chunk!: TransactionChunk;
   @Output() chunkToggle = new EventEmitter<boolean>();
   @Output() transactionUpdate = new EventEmitter<Transaction>();
+  @Output() projectedExpenseUpdate = new EventEmitter<ProjectedExpense>();
+  @Output() projectedExpenseDelete = new EventEmitter<ProjectedExpense>();
+  @Output() projectedExpenseMerge = new EventEmitter<{ projected: ProjectedExpense; transactionId: number }>();
+  @Output() addProjectedExpense = new EventEmitter<void>();
 
   constructor(private elementRef: ElementRef) {}
 
   get amountSpent(): number {
-    return Math.abs(
+    const actualSpent = Math.abs(
       this.chunk.transactions
         .filter(tx => tx.impacts_checking_balance === 'true')
         .reduce((sum, tx) => sum + (tx.edited_amount ?? tx.amount), 0)
     );
+    const projectedAmount = (this.chunk.projectedExpenses || [])
+      .filter(pe => !pe.is_struck_out && !pe.merged_transaction_id)
+      .reduce((sum, pe) => sum + Math.abs(pe.amount), 0);
+    return actualSpent + projectedAmount;
   }
 
   get amountRemaining(): number {
@@ -168,5 +229,9 @@ export class TransactionChunkComponent implements AfterViewInit {
 
   onTransactionUpdate(transaction: Transaction) {
     this.transactionUpdate.emit(transaction);
+  }
+
+  onAddProjectedExpense() {
+    this.addProjectedExpense.emit();
   }
 }
