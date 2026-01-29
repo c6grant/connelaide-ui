@@ -8,6 +8,7 @@ export interface ProjectedExpense {
   note?: string;
   is_struck_out: boolean;
   merged_transaction_id?: number | null;
+  recurring_expense_id?: number | null;
   created_at: string;
   updated_at?: string;
 }

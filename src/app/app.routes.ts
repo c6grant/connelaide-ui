@@ -21,5 +21,9 @@ export const routes: Routes = [
   {
     path: 'pay-periods',
     loadChildren: () => import('./features/pay-periods/pay-periods.routes').then(m => m.PAY_PERIODS_ROUTES)
+  },
+  {
+    path: 'recurring-expenses',
+    loadChildren: () => import('./features/recurring-expenses/recurring-expenses.routes').then(m => m.RECURRING_EXPENSES_ROUTES)
   }
 ];

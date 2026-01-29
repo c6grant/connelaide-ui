@@ -4,6 +4,7 @@ import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { Transaction, TransactionChunk } from '../../../../shared/models/transaction.model';
 import { ProjectedExpense } from '../../../../shared/models/projected-expense.model';
+import { RecurringExpenseCreate } from '../../../../shared/models/recurring-expense.model';
 import { TransactionTableComponent } from '../transaction-table/transaction-table.component';
 import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pipe';
 import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
@@ -68,7 +69,8 @@ import { DateRangePipe } from '../../../../shared/pipes/date-range.pipe';
         (transactionUpdate)="onTransactionUpdate($event)"
         (projectedExpenseUpdate)="projectedExpenseUpdate.emit($event)"
         (projectedExpenseDelete)="projectedExpenseDelete.emit($event)"
-        (projectedExpenseMerge)="projectedExpenseMerge.emit($event)">
+        (projectedExpenseMerge)="projectedExpenseMerge.emit($event)"
+        (createRecurringExpense)="createRecurringExpense.emit($event)">
       </app-transaction-table>
     </p-panel>
   `,
@@ -189,6 +191,7 @@ export class TransactionChunkComponent implements AfterViewInit {
   @Output() projectedExpenseDelete = new EventEmitter<ProjectedExpense>();
   @Output() projectedExpenseMerge = new EventEmitter<{ projected: ProjectedExpense; transactionId: number }>();
   @Output() addProjectedExpense = new EventEmitter<void>();
+  @Output() createRecurringExpense = new EventEmitter<RecurringExpenseCreate>();
 
   constructor(private elementRef: ElementRef) {}
 

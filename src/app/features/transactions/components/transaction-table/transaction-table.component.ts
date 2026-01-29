@@ -11,9 +11,11 @@ import { ToastModule } from 'primeng/toast';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
+import { CalendarModule } from 'primeng/calendar';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Transaction } from '../../../../shared/models/transaction.model';
 import { ProjectedExpense } from '../../../../shared/models/projected-expense.model';
+import { RecurringExpenseCreate } from '../../../../shared/models/recurring-expense.model';
 import { CurrencyFormatPipe } from '../../../../shared/pipes/currency-format.pipe';
 import { CategoriesService } from '../../../categories/services/categories.service';
 import { ConnalaideCategory } from '../../../../shared/models/category.model';
@@ -41,6 +43,7 @@ export interface DisplayRow {
     DialogModule,
     ButtonModule,
     TooltipModule,
+    CalendarModule,
     CurrencyFormatPipe
   ],
   providers: [ConfirmationService, MessageService],
@@ -169,7 +172,13 @@ export interface DisplayRow {
               </ng-template>
             </p-cellEditor>
           </td>
-          <td></td>
+          <td class="actions-cell">
+            <button pButton type="button" icon="pi pi-replay"
+              class="p-button-text p-button-sm p-button-help"
+              pTooltip="Create recurring expense"
+              (click)="onCreateRecurringClick(asTransaction(row.data))">
+            </button>
+          </td>
         </tr>
         <!-- Projected expense row -->
         <tr *ngIf="row.type === 'projected'"
@@ -178,6 +187,9 @@ export interface DisplayRow {
           <td>{{ asProjected(row.data).date }}</td>
           <td>
             <span class="projected-badge">Projected</span>
+            <span class="recurring-badge" *ngIf="asProjected(row.data).recurring_expense_id">
+              <i class="pi pi-replay"></i>
+            </span>
           </td>
           <td pEditableColumn>
             <p-cellEditor>
@@ -301,21 +313,117 @@ export interface DisplayRow {
       [modal]="true"
       [style]="{ width: '600px' }"
       [dismissableMask]="true">
+      <div class="merge-search" *ngIf="mergeDialogVisible">
+        <input type="text" pInputText placeholder="Search transactions..."
+               [(ngModel)]="mergeSearchTerm" />
+      </div>
       <div class="merge-list" *ngIf="mergeDialogVisible">
         <div
-          *ngFor="let tx of transactions"
+          *ngFor="let tx of filteredMergeTransactions"
           class="merge-item"
           (click)="onMergeSelect(tx)">
           <span class="merge-date">{{ tx.date }}</span>
           <span class="merge-desc">{{ tx.description }}</span>
+          <span class="merge-note" *ngIf="tx.note">{{ tx.note }}</span>
           <span class="merge-amount" [class.negative]="tx.amount < 0">
             {{ tx.amount | currencyFormat }}
           </span>
         </div>
-        <div *ngIf="transactions.length === 0" class="merge-empty">
+        <div *ngIf="filteredMergeTransactions.length === 0" class="merge-empty">
           No transactions available to merge with.
         </div>
       </div>
+    </p-dialog>
+
+    <!-- Recurring Expense Dialog -->
+    <p-dialog
+      header="Create Recurring Expense"
+      [(visible)]="recurringDialogVisible"
+      [modal]="true"
+      [style]="{ width: '500px' }"
+      [dismissableMask]="true">
+      <div class="recurring-form" *ngIf="recurringDialogVisible">
+        <div class="form-field">
+          <label for="re-name">Name *</label>
+          <input pInputText id="re-name" [(ngModel)]="recurringForm.name" class="w-full" />
+        </div>
+        <div class="form-field">
+          <label for="re-amount">Amount *</label>
+          <p-inputNumber
+            [(ngModel)]="recurringForm.amount"
+            mode="currency" currency="USD" locale="en-US"
+            inputId="re-amount" styleClass="w-full">
+          </p-inputNumber>
+        </div>
+        <div class="form-field">
+          <label for="re-frequency">Frequency *</label>
+          <p-dropdown
+            [(ngModel)]="recurringForm.frequency"
+            [options]="frequencyOptions"
+            optionLabel="label" optionValue="value"
+            inputId="re-frequency" styleClass="w-full">
+          </p-dropdown>
+        </div>
+        <div class="form-field">
+          <label for="re-day">Day of Month *</label>
+          <p-inputNumber
+            [(ngModel)]="recurringForm.day_of_month"
+            [min]="1" [max]="31" [showButtons]="true"
+            inputId="re-day" styleClass="w-full">
+          </p-inputNumber>
+        </div>
+        <div class="form-field" *ngIf="recurringForm.frequency === 'yearly'">
+          <label for="re-month">Month of Year *</label>
+          <p-dropdown
+            [(ngModel)]="recurringForm.month_of_year"
+            [options]="monthOptions"
+            optionLabel="label" optionValue="value"
+            inputId="re-month" styleClass="w-full">
+          </p-dropdown>
+        </div>
+        <div class="form-field">
+          <label for="re-start">Start Date *</label>
+          <p-calendar
+            [(ngModel)]="recurringForm.start_date"
+            [showIcon]="true" dateFormat="yy-mm-dd"
+            inputId="re-start" styleClass="w-full"
+            [appendTo]="'body'">
+          </p-calendar>
+        </div>
+        <div class="form-field">
+          <label for="re-end">End Date</label>
+          <p-calendar
+            [(ngModel)]="recurringForm.end_date"
+            [showIcon]="true" dateFormat="yy-mm-dd"
+            inputId="re-end" styleClass="w-full"
+            [appendTo]="'body'">
+          </p-calendar>
+        </div>
+        <div class="form-field">
+          <label for="re-category">Category</label>
+          <p-autoComplete
+            [(ngModel)]="recurringForm.connelaide_category_name"
+            [suggestions]="filteredCategories"
+            (completeMethod)="filterCategories($event)"
+            [dropdown]="true" [forceSelection]="false"
+            inputId="re-category" styleClass="w-full"
+            [appendTo]="'body'">
+          </p-autoComplete>
+        </div>
+        <div class="form-field">
+          <label for="re-note">Note</label>
+          <input pInputText id="re-note" [(ngModel)]="recurringForm.note" class="w-full" />
+        </div>
+      </div>
+      <ng-template pTemplate="footer">
+        <button pButton type="button" label="Cancel" class="p-button-text"
+          (click)="recurringDialogVisible = false">
+        </button>
+        <button pButton type="button" label="Create" icon="pi pi-check"
+          [disabled]="!recurringForm.name || !recurringForm.amount || !recurringForm.start_date"
+          (click)="onSubmitRecurringExpense()">
+        </button>
+      </ng-template>
     </p-dialog>
   `,
   styles: [`
@@ -355,6 +463,18 @@ export interface DisplayRow {
       font-size: 12px;
       color: #6d28d9;
       font-weight: 500;
+    }
+    .recurring-badge {
+      display: inline-block;
+      padding: 4px 6px;
+      background-color: #dbeafe;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #1d4ed8;
+      margin-left: 4px;
+    }
+    .recurring-badge i {
+      font-size: 11px;
     }
     .impacts-badge {
       display: inline-block;
@@ -483,6 +603,12 @@ export interface DisplayRow {
     }
 
     /* Merge dialog */
+    .merge-search {
+      margin-bottom: 12px;
+    }
+    .merge-search input {
+      width: 100%;
+    }
     .merge-list {
       display: flex;
       flex-direction: column;
@@ -515,6 +641,13 @@ export interface DisplayRow {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .merge-note {
+      font-size: 12px;
+      color: #9ca3af;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .merge-amount {
       font-weight: 600;
       white-space: nowrap;
@@ -523,6 +656,23 @@ export interface DisplayRow {
       text-align: center;
       color: #9ca3af;
       padding: 20px;
+    }
+
+    /* Recurring expense form */
+    .recurring-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-field label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #374151;
     }
   `]
 })
@@ -533,6 +683,7 @@ export class TransactionTableComponent implements OnInit, OnChanges {
   @Output() projectedExpenseUpdate = new EventEmitter<ProjectedExpense>();
   @Output() projectedExpenseDelete = new EventEmitter<ProjectedExpense>();
   @Output() projectedExpenseMerge = new EventEmitter<{ projected: ProjectedExpense; transactionId: number }>();
+  @Output() createRecurringExpense = new EventEmitter<RecurringExpenseCreate>();
 
   displayRows: DisplayRow[] = [];
 
@@ -555,7 +706,37 @@ export class TransactionTableComponent implements OnInit, OnChanges {
 
   // Merge dialog
   mergeDialogVisible = false;
+  mergeSearchTerm = '';
   private mergeTarget: ProjectedExpense | null = null;
+
+  // Recurring expense dialog
+  recurringDialogVisible = false;
+  recurringForm = {
+    name: '',
+    amount: 0,
+    frequency: 'monthly' as 'monthly' | 'yearly',
+    day_of_month: 1,
+    month_of_year: 1,
+    start_date: null as Date | null,
+    end_date: null as Date | null,
+    connelaide_category_id: undefined as number | undefined,
+    connelaide_category_name: '',
+    note: ''
+  };
+
+  frequencyOptions = [
+    { label: 'Monthly', value: 'monthly' },
+    { label: 'Yearly', value: 'yearly' }
+  ];
+
+  monthOptions = [
+    { label: 'January', value: 1 }, { label: 'February', value: 2 },
+    { label: 'March', value: 3 }, { label: 'April', value: 4 },
+    { label: 'May', value: 5 }, { label: 'June', value: 6 },
+    { label: 'July', value: 7 }, { label: 'August', value: 8 },
+    { label: 'September', value: 9 }, { label: 'October', value: 10 },
+    { label: 'November', value: 11 }, { label: 'December', value: 12 }
+  ];
 
   constructor(
     private categoriesService: CategoriesService,
@@ -828,8 +1009,21 @@ export class TransactionTableComponent implements OnInit, OnChanges {
     this.projectedExpenseUpdate.emit(expense);
   }
 
+  get filteredMergeTransactions(): Transaction[] {
+    const term = this.mergeSearchTerm.trim().toLowerCase();
+    if (!term) {
+      return this.transactions;
+    }
+    return this.transactions.filter(tx =>
+      (tx.description && tx.description.toLowerCase().includes(term)) ||
+      (tx.merchant_name && tx.merchant_name.toLowerCase().includes(term)) ||
+      (tx.note && tx.note.toLowerCase().includes(term))
+    );
+  }
+
   onMergeClick(expense: ProjectedExpense): void {
     this.mergeTarget = expense;
+    this.mergeSearchTerm = '';
     this.mergeDialogVisible = true;
   }
 
@@ -853,5 +1047,68 @@ export class TransactionTableComponent implements OnInit, OnChanges {
         this.projectedExpenseDelete.emit(expense);
       }
     });
+  }
+
+  // ========== Recurring expense creation ==========
+
+  onCreateRecurringClick(transaction: Transaction): void {
+    const dateParts = transaction.date.split('-');
+    const year = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10);
+    const day = parseInt(dateParts[2], 10);
+
+    this.recurringForm = {
+      name: transaction.description,
+      amount: Math.abs(transaction.edited_amount ?? transaction.amount),
+      frequency: 'monthly',
+      day_of_month: day,
+      month_of_year: month,
+      start_date: new Date(year, month - 1, day),
+      end_date: null,
+      connelaide_category_id: transaction.connelaide_category_id ?? undefined,
+      connelaide_category_name: transaction.connelaide_category ?? '',
+      note: ''
+    };
+
+    this.recurringDialogVisible = true;
+  }
+
+  onSubmitRecurringExpense(): void {
+    if (!this.recurringForm.name || !this.recurringForm.amount || !this.recurringForm.start_date) {
+      return;
+    }
+
+    // Resolve category ID from name if changed
+    let categoryId = this.recurringForm.connelaide_category_id;
+    if (this.recurringForm.connelaide_category_name) {
+      const existing = this.categories.find(c => c.name === this.recurringForm.connelaide_category_name);
+      if (existing) {
+        categoryId = existing.id;
+      }
+    } else {
+      categoryId = undefined;
+    }
+
+    const formatDate = (d: Date): string => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dd}`;
+    };
+
+    const data: RecurringExpenseCreate = {
+      name: this.recurringForm.name,
+      amount: this.recurringForm.amount,
+      frequency: this.recurringForm.frequency,
+      day_of_month: this.recurringForm.day_of_month,
+      start_date: formatDate(this.recurringForm.start_date),
+      ...(this.recurringForm.frequency === 'yearly' ? { month_of_year: this.recurringForm.month_of_year } : {}),
+      ...(this.recurringForm.end_date ? { end_date: formatDate(this.recurringForm.end_date) } : {}),
+      ...(categoryId ? { connelaide_category_id: categoryId } : {}),
+      ...(this.recurringForm.note ? { note: this.recurringForm.note } : {})
+    };
+
+    this.createRecurringExpense.emit(data);
+    this.recurringDialogVisible = false;
   }
 }

@@ -21,6 +21,8 @@ import { TransactionChunkService } from '../../services/transaction-chunk.servic
 import { PayPeriodsService } from '../../../pay-periods/services/pay-periods.service';
 import { ProjectedExpensesService } from '../../services/projected-expenses.service';
 import { CategoriesService } from '../../../categories/services/categories.service';
+import { RecurringExpenseCreate } from '../../../../shared/models/recurring-expense.model';
+import { RecurringExpensesService } from '../../../recurring-expenses/services/recurring-expenses.service';
 import { MessageService } from 'primeng/api';
 
 @Component({
@@ -63,7 +65,8 @@ import { MessageService } from 'primeng/api';
               (projectedExpenseUpdate)="onProjectedExpenseUpdate($event)"
               (projectedExpenseDelete)="onProjectedExpenseDelete($event, i)"
               (projectedExpenseMerge)="onProjectedExpenseMerge($event, i)"
-              (addProjectedExpense)="onAddProjectedExpense(i)">
+              (addProjectedExpense)="onAddProjectedExpense(i)"
+              (createRecurringExpense)="onCreateRecurringExpense($event)">
             </app-transaction-chunk>
 
             <div class="load-more-container" *ngIf="hasMorePayPeriods">
@@ -371,6 +374,7 @@ export class TransactionsPageComponent implements OnInit {
     private payPeriodsService: PayPeriodsService,
     private projectedExpensesService: ProjectedExpensesService,
     private categoriesService: CategoriesService,
+    private recurringExpensesService: RecurringExpensesService,
     private messageService: MessageService
   ) {}
 
@@ -677,6 +681,30 @@ export class TransactionsPageComponent implements OnInit {
           severity: 'error',
           summary: 'Error',
           detail: 'Failed to create projected expense',
+          life: 5000
+        });
+      }
+    });
+  }
+
+  // ========== Recurring Expense ==========
+
+  onCreateRecurringExpense(data: RecurringExpenseCreate) {
+    this.recurringExpensesService.createRecurringExpense(data).subscribe({
+      next: (created) => {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Created',
+          detail: `Recurring expense "${created.name}" created`,
+          life: 3000
+        });
+      },
+      error: (err) => {
+        const detail = err.error?.detail || 'Failed to create recurring expense';
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail,
           life: 5000
         });
       }
